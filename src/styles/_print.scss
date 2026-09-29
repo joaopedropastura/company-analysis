@@ -1,0 +1,23 @@
+@page {
+  size: A4 portrait;
+  margin: 12mm 12mm 14mm;
+
+  @bottom-right {
+    content: counter(page) ' / ' counter(pages);
+    font-family: 'Archivo', system-ui, sans-serif;
+    font-size: 8pt;
+    color: #5d6c65;
+  }
+}
+
+html.is-printing,
+html.is-printing body {
+  background: #fff;
+}
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -1,59 +1,67 @@
-# UI
+# A SOARES ADMIN (UI)
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.0.4.
+Painel do CFO Fracionado com o raio-X financeiro das empresas clientes, a
+partir da planilha de diagnóstico: fluxo de caixa mensal (DRE em regime de
+caixa) e ciclo financeiro (PME, PMR, PMP).
 
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Rodando
 
 ```bash
-ng generate component component-name
+npm install
+npm start          # http://localhost:4200
+npm test           # testes unitários (Karma + Chrome)
+npm run build      # build de produção em dist/
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Sem empresas cadastradas, o painel oferece "Explorar com empresas de exemplo"
+para ver tudo funcionando.
 
-```bash
-ng generate --help
-```
+## Telas
 
-## Building
+- **Painel** (`/dashboard?empresa=<id>`): carteira de clientes; rentabilidade
+  (margem bruta, EBITDA e líquida sobre a receita líquida, como no artigo do
+  Insper sobre os 10 principais indicadores financeiros); cascata "para onde
+  vai o faturamento"; custos fixos e variáveis, ponto de equilíbrio e juros;
+  fluxo de caixa mês a mês (entradas x saídas por tipo, com o saldo); ciclo
+  financeiro com o capital de giro preso nos prazos; faturamento x ponto de
+  equilíbrio; margens mês a mês; lucro x faturamento e DRE detalhado.
+  "Apresentar ao cliente" esconde a carteira (nomes dos outros clientes) e os
+  botões de edição.
+- **Exportar PDF** (botão no painel): abre a impressão do navegador com um
+  layout de relatório em A4 retrato, tema claro e sem controles. Escolha
+  "Salvar como PDF" como destino; o nome sugerido é "A SOARES ADMIN -
+  empresa - período". Ctrl+P/Cmd+P usa o mesmo layout. Com mais de 6 meses, o
+  DRE sai com os meses nas linhas para caber na página. As regras ficam no
+  final de `dashboard.scss` (classe `is-printing`) e em `styles/_print.scss`.
+- **Cadastro** (`/registrations`, `/registrations/<id>`): importação de Excel
+  ou digitação manual. A grade do DRE funciona como planilha: Enter desce uma
+  linha e dá para colar um bloco copiado do Excel.
 
-To build the project run:
+## Importação do Excel
 
-```bash
-ng build
-```
+O modelo fica em `public/template-dashboard-empresas.xlsx` (botão "Baixar
+modelo"). O leitor (`src/app/core/services/excel-import.ts`) procura as linhas
+pelo nome, então tolera acentos, maiúsculas, "(+)/(-)" no rótulo, saídas com
+sinal negativo, valores em texto ("R$ 1.234,56") e qualquer número de meses.
+Também lê, em qualquer aba, linhas no formato rótulo + valor:
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+- ciclo financeiro: `Prazo Médio de Estocagem (PME)`, `... de Recebimento
+  (PMR)` e `... de Pagamento (PMP)`, como na aba "Ciclo Financeiro". Se a aba
+  trouxer o ciclo operacional ou o financeiro, a importação confere com o
+  cálculo e avisa se divergir;
+- dados da empresa: `Empresa`, `CNPJ`, `Segmento` e `Responsável`.
 
-## Running unit tests
+Receita líquida, margem, resultado e lucro são sempre recalculados; se a
+planilha trouxer um total diferente do cálculo, a importação avisa.
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+## Onde mexer
 
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- Cálculos (DRE, margens, ponto de equilíbrio, ciclo e capital de giro):
+  `src/app/core/finance/finance.ts`.
+- Dados: por enquanto ficam no `localStorage` do navegador
+  (`src/app/core/services/company-store.ts`). Para usar a API .NET, troque os
+  métodos `read`/`write` dessa classe por chamadas HTTP; as telas só conversam
+  com ela.
+- Cores e tipografia: tokens em `src/styles/_tokens.scss` (tema claro e
+  escuro). As cores dos gráficos foram validadas para daltonismo; se trocar,
+  valide de novo.

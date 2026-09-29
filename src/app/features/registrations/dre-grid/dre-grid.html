@@ -1,0 +1,68 @@
+<div class="wrap" [class.is-invalid]="invalid()" (paste)="onPaste($event)" (keydown.enter)="onEnter($event)">
+  <table class="dre" id="dre-grid" tabindex="-1">
+    <caption class="visually-hidden">Fluxo de caixa mês a mês, em reais</caption>
+    <thead>
+      <tr>
+        <th scope="col" class="dre__corner">Conta</th>
+        @for (m of months(); track m.id; let i = $index) {
+          <th scope="col" class="dre__month">
+            <div class="dre__month-head">
+              <input
+                class="month-input"
+                [value]="m.label"
+                (change)="rename(m.id, $event)"
+                [attr.aria-label]="'Nome da coluna ' + (i + 1)"
+                [attr.aria-invalid]="(invalid() && !m.label.trim()) || null"
+                placeholder="mês"
+              />
+              <button type="button" class="icon-btn remove" (click)="removeMonth(m)" [attr.aria-label]="'Remover ' + (m.label || 'mês ' + (i + 1))">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                </svg>
+              </button>
+            </div>
+          </th>
+        }
+        <th scope="col" class="dre__total">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (line of lines; track line.key; let r = $index) {
+        <tr [class.is-total]="line.kind === 'total'">
+          <th scope="row">
+            <span class="dre__sign" aria-hidden="true">{{ line.sign }}</span>{{ line.label }}
+          </th>
+          @for (m of months(); track m.id; let c = $index) {
+            <td>
+              @if (line.kind === 'input') {
+                <app-money-input
+                  [attr.data-cell]="r + ':' + c"
+                  [value]="m[line.key]"
+                  (valueChange)="setValue(m.id, line.key, $event)"
+                  [ariaLabel]="line.label + ', ' + m.label"
+                  placeholder="0"
+                />
+              } @else {
+                <output class="dre__calc" [class.neg]="results()[c][line.key] < 0">{{ fmt(results()[c][line.key]) }}</output>
+              }
+            </td>
+          }
+          <td class="dre__total" [class.neg]="total()[line.key] < 0">{{ fmt(total()[line.key]) }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<div class="actions">
+  <button type="button" class="btn btn--sm" (click)="addMonth()">
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </svg>
+    Adicionar mês
+  </button>
+  <p class="field__hint">
+    Enter desce para a próxima linha. Para ganhar tempo, copie o bloco de valores no Excel e cole em qualquer célula: as linhas
+    seguem a mesma ordem da planilha.
+  </p>
+</div>

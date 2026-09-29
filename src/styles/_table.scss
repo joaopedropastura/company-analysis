@@ -1,0 +1,72 @@
+.table-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+
+  th,
+  td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--rule);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    background: var(--sheet);
+    border-bottom-color: var(--rule-strong);
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    vertical-align: bottom;
+  }
+
+  th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--sheet);
+    text-align: left;
+    font-weight: 500;
+  }
+
+  tbody th {
+    color: var(--ink);
+  }
+
+  tbody tr:hover > * {
+    background: var(--sheet-2);
+  }
+
+  tr.is-total > * {
+    background: var(--sheet-2);
+    font-weight: 650;
+  }
+
+  .is-selected {
+    box-shadow: inset 0 -2px 0 var(--ledger-accent);
+  }
+
+  .neg {
+    color: var(--negative-text);
+  }
+
+  .pos {
+    color: var(--positive-text);
+  }
+}
+
+.data-table--compact {
+  th,
+  td {
+    padding: 7px 10px;
+  }
+}

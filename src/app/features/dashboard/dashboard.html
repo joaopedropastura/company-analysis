@@ -1,0 +1,403 @@
+<div class="page">
+  @if (company(); as c) {
+    <div class="report-head" aria-hidden="true">
+      <span class="report-head__brand">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <rect x="3" y="4" width="18" height="4" rx="1.4" fill="currentColor" />
+          <rect x="12" y="10" width="9" height="4" rx="1.4" fill="#e34948" />
+          <rect x="3" y="16" width="8" height="4" rx="1.4" fill="#1baf7a" />
+        </svg>
+        A SOARES ADMIN
+      </span>
+      <span>Relatório gerado em {{ generatedAt() }}</span>
+    </div>
+
+    <div class="filters">
+      @if (!ui.presenting()) {
+        <div class="portfolio" role="group" aria-label="Carteira de clientes">
+          @for (p of portfolio(); track p.id) {
+            <button type="button" class="client" [attr.aria-pressed]="p.id === c.id" (click)="selectCompany(p.id)">
+              <span class="client__name">{{ p.nome }}</span>
+              <span class="client__meta">{{ p.faturamento }}</span>
+            </button>
+          }
+          <a class="client client--add" routerLink="/registrations">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+              <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+            Cadastrar empresa
+          </a>
+        </div>
+      }
+
+      @if (months().length) {
+        <div class="toolbar">
+          <div class="toolbar__period">
+            <span class="toolbar__label" id="periodo">Período</span>
+            <div class="segmented" role="group" aria-labelledby="periodo">
+              <button type="button" [attr.aria-pressed]="period() === 'all'" (click)="period.set('all')">Acumulado</button>
+              @for (m of months(); track m.id) {
+                <button type="button" [attr.aria-pressed]="period() === m.id" (click)="period.set(m.id)">{{ m.label }}</button>
+              }
+            </div>
+          </div>
+          @if (!ui.presenting()) {
+            <div class="toolbar__actions">
+              <a class="btn btn--sm" [routerLink]="['/registrations', c.id]">Editar dados</a>
+              <button
+                type="button"
+                class="btn btn--sm"
+                (click)="exportPdf()"
+                title="Abre a impressão do navegador: escolha “Salvar como PDF” como destino."
+              >
+                <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+                  <path d="M4 1.5h5.5L13 5v9.5H4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                  <path d="M8.5 7v5M6.3 9.8 8.5 12l2.2-2.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Exportar PDF
+              </button>
+              <button type="button" class="btn btn--sm btn--primary" (click)="ui.startPresentation()">
+                <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+                  <rect x="1.5" y="2.5" width="13" height="8.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5" />
+                  <path d="M8 11v2.5M5 14h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+                Apresentar
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    @if (!months().length) {
+      <section class="panel">
+        <div class="empty">
+          <h1 class="empty__title">{{ c.nome }} ainda não tem fluxo de caixa</h1>
+          <p>Lance ao menos um mês do DRE (faturamento, custos, folha) ou importe a planilha para ver o raio-X desta empresa.</p>
+          <div class="empty__actions">
+            <a class="btn btn--primary" [routerLink]="['/registrations', c.id]">Preencher fluxo de caixa</a>
+          </div>
+        </div>
+      </section>
+    } @else {
+      <section class="panel hero" aria-labelledby="empresa-nome">
+        <div class="hero__text">
+          <div>
+            <h1 id="empresa-nome" class="hero__name">{{ c.nome }}</h1>
+            <p class="hero__meta">
+              @if (c.segmento) {
+                <span>{{ c.segmento }}</span>
+              }
+              <span>{{ periodText() }}</span>
+            </p>
+          </div>
+
+          <div class="indicators">
+            <h2 class="indicators__title">
+              Rentabilidade <span>sobre a receita líquida de {{ receitaLiquidaText() }}</span>
+            </h2>
+            <ul class="indicators__list">
+              @for (i of profitability(); track i.label) {
+                <li class="indicator">
+                  <div class="indicator__head">
+                    <span class="indicator__label">{{ i.label }}</span>
+                    <span class="indicator__value" [class.neg]="i.negative">{{ i.text }}</span>
+                  </div>
+                  <div class="indicator__meter" [class.is-negative]="i.negative" aria-hidden="true">
+                    <span [style.width.%]="i.fill"></span>
+                  </div>
+                  <span class="indicator__formula">{{ i.formula }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+
+        </div>
+
+        <figure class="hero__chart">
+          <figcaption class="chart-head">
+            <h2 class="panel__title">
+              Para onde vai o faturamento
+              <span class="chart-unit">{{ scale() === 'per100' ? 'Valores a cada R$ 100 faturados' : 'Valores em reais' }}</span>
+            </h2>
+            <div class="chart-head__actions">
+              <div class="segmented" role="group" aria-label="Unidade da cascata">
+                <button type="button" [attr.aria-pressed]="scale() === 'per100'" (click)="scale.set('per100')">A cada R$&nbsp;100</button>
+                <button type="button" [attr.aria-pressed]="scale() === 'reais'" (click)="scale.set('reais')">Em reais</button>
+              </div>
+              <button type="button" class="btn btn--sm btn--ghost" [attr.aria-pressed]="isTable('waterfall')" (click)="toggleTable('waterfall')">
+                {{ isTable('waterfall') ? 'Ver gráfico' : 'Ver tabela' }}
+              </button>
+            </div>
+          </figcaption>
+          <ul class="legend">
+            <li class="legend__item"><span class="legend__swatch" style="background: var(--viz-context)"></span>Faturamento e subtotais</li>
+            <li class="legend__item"><span class="legend__swatch" style="background: var(--viz-out)"></span>Saídas</li>
+            <li class="legend__item">
+              <span class="legend__swatch" [style.background]="ind().dre.lucroLiquido >= 0 ? 'var(--viz-result)' : 'var(--viz-out)'"></span>
+              {{ ind().dre.lucroLiquido >= 0 ? 'Lucro líquido' : 'Prejuízo líquido' }}
+            </li>
+          </ul>
+          @if (isTable('waterfall')) {
+            <app-viz-table [data]="waterfallTable()" caption="Cascata do DRE no período" />
+          } @else {
+            <div class="chart-box chart-box--waterfall">
+              <app-chart [config]="waterfall()" [label]="waterfallAria()" />
+            </div>
+          }
+        </figure>
+
+        <dl class="kpis">
+          @for (k of kpis(); track k.label) {
+            <div class="kpi">
+              <dt class="kpi__label">{{ k.label }}</dt>
+              <dd class="kpi__value">
+                {{ k.value }}
+                @if (k.unit) {
+                  <span class="kpi__unit">{{ k.unit }}</span>
+                }
+              </dd>
+              <dd class="kpi__note">
+                @if (k.delta; as d) {
+                  <span class="kpi__delta" [class.pos]="d.good" [class.neg]="!d.good">{{ d.good ? '▲' : '▼' }} {{ d.text }}</span>
+                }
+                {{ k.note }}
+              </dd>
+            </div>
+          }
+        </dl>
+      </section>
+
+      <div class="grid">
+        <section class="panel span-8" aria-labelledby="fluxo">
+          <div class="panel__head">
+            <div>
+              <h2 id="fluxo" class="panel__title">Fluxo de caixa mês a mês</h2>
+            </div>
+            <button type="button" class="btn btn--sm btn--ghost" [attr.aria-pressed]="isTable('flow')" (click)="toggleTable('flow')">
+              {{ isTable('flow') ? 'Ver gráfico' : 'Ver tabela' }}
+            </button>
+          </div>
+          <ul class="legend">
+            @for (s of flowSeries; track s.key) {
+              <li class="legend__item"><span class="legend__swatch" [style.background]="'var(' + s.color + ')'"></span>{{ s.label }}</li>
+            }
+          </ul>
+          @if (isTable('flow')) {
+            <app-viz-table [data]="flowTable()" caption="Entradas, saídas por tipo e saldo de cada mês" />
+          } @else {
+            <div class="chart-box chart-box--flow">
+              <app-chart
+                [config]="flow()"
+                label="Colunas de entradas e de saídas empilhadas por tipo, mês a mês, com o saldo de cada mês"
+              />
+            </div>
+          }
+        </section>
+
+        <section class="panel span-4" aria-labelledby="ciclo">
+          <div class="panel__head">
+            <div>
+              <h2 id="ciclo" class="panel__title">Ciclo financeiro</h2>
+            </div>
+            @if (!ui.presenting()) {
+              <a class="btn btn--sm btn--ghost" [routerLink]="['/registrations', c.id]" fragment="ciclo">Editar prazos</a>
+            }
+          </div>
+          @if (cycle().financeiro != null) {
+            <table class="cycle">
+              <caption class="visually-hidden">Ciclo financeiro em dias</caption>
+              <tbody>
+                @for (row of cycleRows; track row.key) {
+                  <tr [class.is-total]="row.kind === 'total'">
+                    <th scope="row">
+                      <span class="cycle__label"><span class="cycle__sign" aria-hidden="true">{{ row.sign }}</span>{{ row.label }}</span>
+                      <span class="cycle__hint">{{ row.hint }}</span>
+                    </th>
+                    <td>{{ cycle()[row.key] ?? 0 }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            @if (workingCapitalText(); as wc) {
+              <p class="cycle__ncg"><span>Capital de giro preso nos prazos (estimativa)</span> {{ wc }}</p>
+            }
+          } @else {
+            <p class="cycle__empty">Informe os prazos de recebimento (PMR) e pagamento (PMP) no cadastro para ver o ciclo.</p>
+          }
+        </section>
+
+        <section class="panel span-5" aria-labelledby="faturamento">
+          <div class="panel__head">
+            <div>
+              <h2 id="faturamento" class="panel__title">Faturamento x ponto de equilíbrio</h2>
+            </div>
+            <button type="button" class="btn btn--sm btn--ghost" [attr.aria-pressed]="isTable('revenue')" (click)="toggleTable('revenue')">
+              {{ isTable('revenue') ? 'Ver gráfico' : 'Ver tabela' }}
+            </button>
+          </div>
+          @if (pontoEquilibrio() != null) {
+            <ul class="legend">
+              <li class="legend__item"><span class="legend__swatch" style="background: var(--viz-s1)"></span>Acima do ponto de equilíbrio</li>
+              <li class="legend__item"><span class="legend__swatch" style="background: var(--viz-out)"></span>Abaixo</li>
+              <li class="legend__item"><span class="legend__line" style="background: var(--ink-2)"></span>Ponto de equilíbrio médio: {{ pontoEquilibrioText() }}</li>
+            </ul>
+          }
+          @if (isTable('revenue')) {
+            <app-viz-table [data]="revenueTable()" caption="Faturamento mensal e ponto de equilíbrio" />
+          } @else {
+            <div class="chart-box">
+              <app-chart [config]="revenue()" label="Faturamento mensal em colunas, com a linha do ponto de equilíbrio" />
+            </div>
+          }
+        </section>
+
+        <section class="panel span-4" aria-labelledby="margens">
+          <div class="panel__head">
+            <div>
+              <h2 id="margens" class="panel__title">Margens mês a mês</h2>
+            </div>
+            <button type="button" class="btn btn--sm btn--ghost" [attr.aria-pressed]="isTable('margins')" (click)="toggleTable('margins')">
+              {{ isTable('margins') ? 'Ver gráfico' : 'Ver tabela' }}
+            </button>
+          </div>
+          <ul class="legend">
+            @for (s of marginSeries; track s.key) {
+              <li class="legend__item"><span class="legend__line" [style.background]="'var(' + s.color + ')'"></span>{{ s.label }}</li>
+            }
+          </ul>
+          @if (isTable('margins')) {
+            <app-viz-table [data]="marginsTable()" caption="Margens mensais em porcentagem do faturamento" />
+          } @else {
+            <div class="chart-box">
+              <app-chart [config]="margins()" label="Margens de contribuição, operacional e líquida por mês" />
+            </div>
+          }
+        </section>
+
+        <section class="panel span-3 ring-panel" aria-labelledby="lucro-faturamento">
+          <div class="panel__head">
+            <div>
+              <h2 id="lucro-faturamento" class="panel__title">Lucro x faturamento</h2>
+            </div>
+          </div>
+          <app-profit-ring class="ring-panel__ring" [faturamento]="ind().dre.faturamentoBruto" [lucro]="ind().dre.lucroLiquido" />
+          <dl class="ring-panel__numbers">
+            <div>
+              <dt>{{ ind().dre.lucroLiquido >= 0 ? 'Lucro líquido' : 'Prejuízo líquido' }}</dt>
+              <dd [class.neg]="ind().dre.lucroLiquido < 0">{{ cash().lucro }}</dd>
+            </div>
+            <div>
+              <dt>Entradas</dt>
+              <dd>
+                {{ cash().entradas }}
+                @if (cash().delta; as d) {
+                  <span class="ring-panel__delta" [class.pos]="d.good" [class.neg]="!d.good">{{ d.good ? '▲' : '▼' }} {{ d.text }} {{ d.vs }}</span>
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>Saídas</dt>
+              <dd>{{ cash().saidas }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="panel span-12" aria-labelledby="dre">
+          <div class="panel__head">
+            <div>
+              <h2 id="dre" class="panel__title">DRE detalhado</h2>
+            </div>
+          </div>
+          <div class="table-scroll" [class.dre-by-line--long]="longPeriod()">
+            <table class="data-table">
+              <caption class="visually-hidden">DRE mensal da empresa {{ c.nome }}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Conta</th>
+                  @for (p of series(); track $index; let i = $index) {
+                    <th scope="col" [class.is-selected]="selectedIndex() === i">{{ p.label }}</th>
+                  }
+                  <th scope="col">Total</th>
+                  <th scope="col">% do faturamento</th>
+                  <th scope="col">Variação no período</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of dreTable(); track row.line.key) {
+                  <tr [class.is-total]="row.line.kind === 'total'">
+                    <th scope="row">{{ row.line.label }}</th>
+                    @for (cell of row.cells; track $index; let i = $index) {
+                      <td [class.neg]="cell.neg" [class.is-selected]="selectedIndex() === i">{{ cell.text }}</td>
+                    }
+                    <td [class.neg]="row.total.neg">{{ row.total.text }}</td>
+                    <td>{{ row.share }}</td>
+                    <td [class.pos]="row.changeGood === true" [class.neg]="row.changeGood === false">{{ row.change }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if (longPeriod()) {
+            <table class="data-table dre-by-month">
+              <caption class="visually-hidden">DRE mês a mês da empresa {{ c.nome }}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Mês</th>
+                  @for (l of dreLines; track l.key) {
+                    <th scope="col">{{ l.short }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of dreByMonth().rows; track r.label) {
+                  <tr>
+                    <th scope="row">{{ r.label }}</th>
+                    @for (cell of r.cells; track $index) {
+                      <td [class.neg]="cell.neg">{{ cell.text }}</td>
+                    }
+                  </tr>
+                }
+                <tr class="is-total">
+                  <th scope="row">Total</th>
+                  @for (cell of dreByMonth().total; track $index) {
+                    <td [class.neg]="cell.neg">{{ cell.text }}</td>
+                  }
+                </tr>
+                <tr>
+                  <th scope="row">% do faturamento</th>
+                  @for (share of dreByMonth().share; track $index) {
+                    <td>{{ share }}</td>
+                  }
+                </tr>
+              </tbody>
+            </table>
+          }
+        </section>
+      </div>
+    }
+  } @else {
+    <section class="onboarding">
+      <div class="onboarding__text">
+        <h1 class="onboarding__title">Comece pela primeira empresa da carteira</h1>
+        <p>
+          O painel mostra o raio-X financeiro de cada cliente: para onde vai o faturamento, como as margens evoluem mês a
+          mês e quanto a empresa precisa faturar para empatar. Importe a planilha modelo ou digite o DRE mês a mês.
+        </p>
+        <div class="empty__actions">
+          <a class="btn btn--primary" routerLink="/registrations">Cadastrar empresa</a>
+          <button type="button" class="btn" (click)="loadSamples()">Explorar com empresas de exemplo</button>
+        </div>
+      </div>
+      <svg class="onboarding__art" viewBox="0 0 320 220" aria-hidden="true">
+        <rect x="0" y="8" width="300" height="18" rx="4" fill="var(--viz-context)" />
+        <rect x="262" y="38" width="38" height="18" rx="4" fill="var(--viz-out)" />
+        <rect x="0" y="68" width="262" height="18" rx="4" fill="var(--viz-context)" />
+        <rect x="132" y="98" width="130" height="18" rx="4" fill="var(--viz-out)" />
+        <rect x="70" y="128" width="62" height="18" rx="4" fill="var(--viz-out)" />
+        <rect x="46" y="158" width="24" height="18" rx="4" fill="var(--viz-out)" />
+        <rect x="0" y="188" width="46" height="18" rx="4" fill="var(--viz-result)" />
+      </svg>
+    </section>
+  }
+</div>

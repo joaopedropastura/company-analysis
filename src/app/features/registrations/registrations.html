@@ -1,0 +1,252 @@
+<div class="page layout">
+  <aside class="rail" aria-labelledby="rail-title">
+    <div class="rail__head">
+      <h2 id="rail-title" class="rail__title">Empresas</h2>
+      <a class="btn btn--sm" routerLink="/registrations">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+        Nova empresa
+      </a>
+    </div>
+    @if (companies().length) {
+      <ul class="rail__list">
+        @for (c of companies(); track c.id) {
+          <li>
+            <a class="rail__item" [routerLink]="['/registrations', c.id]" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+              <span class="rail__name">{{ c.nome }}</span>
+              <span class="rail__meta">{{ monthsText(c) }}</span>
+              <span class="rail__meta">{{ updatedText(c) }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    } @else {
+      <div class="rail__empty">
+        <p>Nenhuma empresa cadastrada ainda.</p>
+        <button type="button" class="link-btn" (click)="loadSamples()">Carregar empresas de exemplo</button>
+      </div>
+    }
+  </aside>
+
+  <section class="editor" aria-labelledby="editor-title">
+    <header class="editor__head">
+      <div>
+        <h1 id="editor-title" class="editor__title">{{ existing()?.nome || 'Nova empresa' }}</h1>
+        <p class="editor__sub">
+          {{
+            existing()
+              ? 'Atualize os números do mês ou importe uma planilha nova.'
+              : 'Importe a planilha do cliente ou preencha os dados abaixo.'
+          }}
+        </p>
+      </div>
+      @if (existing(); as c) {
+        <a class="btn btn--sm" routerLink="/dashboard" [queryParams]="{ empresa: c.id }">Ver no painel</a>
+      }
+    </header>
+
+    <div
+      class="import"
+      [class.is-over]="dragging()"
+      (dragover)="onDragOver($event)"
+      (dragleave)="dragging.set(false)"
+      (drop)="onDrop($event)"
+    >
+      <svg class="import__icon" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+        <path d="M8 3h11l7 7v17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.6" />
+        <path d="M19 3v7h7" fill="none" stroke="currentColor" stroke-width="1.6" />
+        <path d="M11 15h10M11 19h10M11 23h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+      <div class="import__text">
+        <p class="import__title">Importar planilha do Excel</p>
+        <p class="import__hint">
+          Arraste o arquivo para cá ou
+          <button type="button" class="link-btn" (click)="fileInput.click()">escolha no computador</button>. Aceita o modelo de DRE
+          mensal (.xlsx, .xls ou .csv) com quantos meses quiser. Os dados preenchem o formulário para você revisar antes de salvar.
+        </p>
+      </div>
+      <a class="btn btn--sm" href="template-dashboard-empresas.xlsx" download>Baixar modelo</a>
+      <input #fileInput type="file" class="visually-hidden" accept=".xlsx,.xlsm,.xls,.csv" tabindex="-1" aria-hidden="true" (change)="onFileChosen($event)" />
+    </div>
+
+    @if (importing()) {
+      <p class="import-note" role="status">Lendo a planilha…</p>
+    }
+    @if (imported(); as im) {
+      <div class="import-note" role="status">
+        <p><strong>{{ im.fileName }}</strong>: {{ importSummary(im.result) }}</p>
+        @if (im.result.avisos.length) {
+          <ul class="import-note__warnings">
+            @for (a of im.result.avisos; track $index) {
+              <li>{{ a }}</li>
+            }
+          </ul>
+        }
+        <div class="import-note__actions">
+          <button type="button" class="btn btn--sm" (click)="undoImport()">Desfazer importação</button>
+          <button type="button" class="btn btn--sm btn--ghost" (click)="imported.set(null)">Fechar aviso</button>
+        </div>
+      </div>
+    }
+
+    <form class="form" novalidate (submit)="onSubmit($event)">
+      <section class="block" id="empresa" aria-labelledby="b1">
+        <div class="block__head">
+          <span class="block__num" aria-hidden="true">1</span>
+          <div>
+            <h2 id="b1" class="block__title">Dados da empresa</h2>
+            <p class="block__sub">Identificação do cliente.</p>
+          </div>
+        </div>
+
+        <div class="fields">
+          <div class="field">
+            <label class="field__label" for="f-nome">Nome da empresa</label>
+            <input
+              id="f-nome"
+              class="input"
+              autocomplete="organization"
+              [value]="info().nome"
+              (input)="setText('nome', $event)"
+              [attr.aria-invalid]="(submitted() && !!errors().nome) || null"
+              aria-describedby="e-nome"
+              required
+            />
+            @if (submitted() && errors().nome) {
+              <p id="e-nome" class="field__error">{{ errors().nome }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="f-cnpj">CNPJ</label>
+            <input
+              id="f-cnpj"
+              class="input"
+              inputmode="numeric"
+              placeholder="00.000.000/0000-00"
+              [value]="info().cnpj"
+              (input)="setCnpj($event)"
+              [attr.aria-invalid]="(submitted() && !!errors().cnpj) || null"
+              aria-describedby="e-cnpj"
+            />
+            @if (submitted() && errors().cnpj) {
+              <p id="e-cnpj" class="field__error">{{ errors().cnpj }}</p>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="f-segmento">Segmento</label>
+            <input id="f-segmento" class="input" list="segmentos" [value]="info().segmento" (input)="setText('segmento', $event)" />
+            <datalist id="segmentos">
+              @for (s of segments; track s) {
+                <option [value]="s"></option>
+              }
+            </datalist>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="f-resp">Responsável (CEO ou sócio)</label>
+            <input id="f-resp" class="input" autocomplete="name" [value]="info().responsavel" (input)="setText('responsavel', $event)" />
+          </div>
+        </div>
+      </section>
+
+      <section class="block" id="fluxo" aria-labelledby="b2">
+        <div class="block__head">
+          <span class="block__num" aria-hidden="true">2</span>
+          <div>
+            <h2 id="b2" class="block__title">Fluxo de caixa mês a mês</h2>
+            <p class="block__sub">
+              Valores realizados em regime de caixa, em reais. Digite as saídas como números positivos; receita líquida, margem,
+              resultado e lucro são calculados.
+            </p>
+          </div>
+        </div>
+        <app-dre-grid [(months)]="meses" [invalid]="submitted() && !!errors().meses" />
+        @if (submitted() && errors().meses) {
+          <p class="field__error block__error">{{ errors().meses }}</p>
+        }
+      </section>
+
+      <section class="block" id="ciclo" aria-labelledby="b3">
+        <div class="block__head">
+          <span class="block__num" aria-hidden="true">3</span>
+          <div>
+            <h2 id="b3" class="block__title">Ciclo financeiro</h2>
+            <p class="block__sub">
+              Prazos médios em dias, como na aba "Ciclo Financeiro" da planilha. Deixe o estoque em branco se a empresa não trabalha
+              com estoque; ciclo operacional e financeiro são calculados.
+            </p>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="cycle-table">
+            <caption class="visually-hidden">Ciclo financeiro: prazos médios em dias</caption>
+            <thead>
+              <tr>
+                <th scope="col">Indicador de capital de giro</th>
+                <th scope="col" class="cycle-table__days">Prazo (dias)</th>
+                <th scope="col">O que significa</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of cycleRows; track row.key) {
+                <tr [class.is-total]="row.kind === 'total'">
+                  <th scope="row"><span class="cycle-table__sign" aria-hidden="true">{{ row.sign }}</span>{{ row.label }}</th>
+                  <td class="cycle-table__days">
+                    @if (row.kind === 'input') {
+                      <input
+                        class="input input--num"
+                        type="number"
+                        min="0"
+                        max="999"
+                        inputmode="numeric"
+                        [id]="'f-' + row.key"
+                        [value]="ciclo()[row.key] ?? ''"
+                        (input)="setCycle(row.key, $event)"
+                        [attr.aria-label]="row.label + ', em dias'"
+                      />
+                    } @else {
+                      <output>{{ cycleResult()[row.key] ?? '—' }}</output>
+                    }
+                  </td>
+                  <td class="cycle-table__hint">{{ row.hint }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="savebar">
+        <div class="savebar__summary">
+          @if (totals(); as t) {
+            <span>Faturamento <strong>{{ t.fat }}</strong></span>
+            <span>Lucro <strong [class.neg]="t.negative">{{ t.lucro }}</strong></span>
+          }
+          @if (dirty()) {
+            <span class="savebar__dirty">Alterações não salvas</span>
+          }
+        </div>
+        <div class="savebar__actions">
+          @if (existing()) {
+            @if (confirmingDelete()) {
+              <span class="savebar__confirm">Excluir esta empresa?</span>
+              <button type="button" class="btn btn--danger" (click)="remove()">Excluir</button>
+              <button type="button" class="btn btn--ghost" (click)="confirmingDelete.set(false)">Manter</button>
+            } @else {
+              <button type="button" class="btn btn--ghost btn--danger" (click)="confirmingDelete.set(true)">Excluir empresa</button>
+            }
+          }
+          @if (dirty() && !confirmingDelete()) {
+            <button type="button" class="btn btn--ghost" (click)="discard()">Descartar alterações</button>
+          }
+          @if (!confirmingDelete()) {
+            <button type="submit" class="btn btn--primary">{{ existing() ? 'Salvar alterações' : 'Salvar empresa' }}</button>
+          }
+        </div>
+      </div>
+    </form>
+  </section>
+</div>

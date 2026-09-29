@@ -1,1 +1,6 @@
-/* You can add global styles to this file, and also import other style files */
+@use 'styles/tokens';
+@use 'styles/base';
+@use 'styles/controls';
+@use 'styles/panels';
+@use 'styles/table';
+@use 'styles/print';
